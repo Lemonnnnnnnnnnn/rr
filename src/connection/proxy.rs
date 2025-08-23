@@ -50,22 +50,21 @@ impl ProxyConfig {
 pub struct ProxyConnection {
     /// 底层TCP连接
     pub stream: TcpStream,
-    /// 代理配置
-    config: ProxyConfig,
 }
 
 impl ProxyConnection {
     /// 创建到代理服务器的连接
     pub fn new(config: ProxyConfig) -> Result<Self> {
         let addr = format!("{}:{}", config.host, config.port);
-        let stream = TcpStream::connect(&addr)
-            .map_err(|e| Error::connection(format!("Failed to connect to proxy {}: {}", addr, e)))?;
+        let stream = TcpStream::connect(&addr).map_err(|e| {
+            Error::connection(format!("Failed to connect to proxy {}: {}", addr, e))
+        })?;
 
         stream.set_read_timeout(Some(config.timeout))?;
         stream.set_write_timeout(Some(config.timeout))?;
         stream.set_nodelay(true)?;
 
-        Ok(Self { stream, config })
+        Ok(Self { stream })
     }
 
     /// 建立到目标服务器的隧道
