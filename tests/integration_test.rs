@@ -1,8 +1,8 @@
-use rt_1::{HttpClient, proxy::ProxyConfig};
+use rt_1::{HttpClient, ProxyConfig};
 
 #[test]
 fn test_get_httpbin() {
-    let mut client = HttpClient::new().expect("创建客户端失败");
+    let mut client = HttpClient::new();
     let response = client
         .get("https://httpbin.org/get")
         .send()
@@ -14,8 +14,7 @@ fn test_get_httpbin() {
 // 测试代理
 #[test]
 fn test_proxy() {
-    let mut client =
-        HttpClient::with_proxy(ProxyConfig::http("127.0.0.1", 7890)).expect("创建客户端失败");
+    let mut client = HttpClient::with_proxy(ProxyConfig::http("127.0.0.1", 7890));
     let response = client
         .get("https://e-hentai.org")
         .send()

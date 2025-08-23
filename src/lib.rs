@@ -1,5 +1,4 @@
 pub mod client;
-pub mod proxy;
 pub mod response;
 pub mod error;
 pub mod request;
@@ -9,3 +8,4 @@ pub mod connection;
 pub use client::HttpClient;
 pub use response::Response;
 pub use error::{Error, Result};
+pub use connection::{Connection, HttpConnection, ProxyConfig, ProxyType, TlsManager};
