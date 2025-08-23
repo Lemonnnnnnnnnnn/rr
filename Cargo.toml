@@ -1,0 +1,10 @@
+[package]
+name = "rt-1"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rustls = "0.23"
+webpki-roots = "0.26"
+rustls-pemfile = "2.1"
+thiserror = "2.0.16"
