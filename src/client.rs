@@ -1,7 +1,7 @@
 use crate::error::Result;
-use crate::request::{Method, Request, RequestBuilder};
+use crate::request::{Method, Request, AsyncRequestBuilder};
 use crate::utils::{parse_host_port, ParsedUrl};
-use crate::connection::{Connection, HttpConnection, ProxyConfig};
+use crate::connection::{AsyncConnection, AsyncHttpConnection, ProxyConfig};
 use crate::response::Response;
 
 /// HTTP 客户端结构体
@@ -21,31 +21,32 @@ impl HttpClient {
     }
 
     /// 发送 GET 请求
-    pub fn get(&mut self, url: &str) -> RequestBuilder {
-        RequestBuilder::new(Method::GET, url, self)
+    pub fn get(&mut self, url: &str) -> AsyncRequestBuilder {
+        AsyncRequestBuilder::new(Method::GET, url, self)
     }
 
-    pub fn execute(&self, request: Request) -> Result<Response> {
+    /// 异步执行请求
+    pub async fn execute(&self, request: Request) -> Result<Response> {
         let parsed_url = parse_host_port(&request.url)?;
 
         // 创建连接
-        let mut connection = self.create_connection(&parsed_url)?;
+        let mut connection = self.create_connection(&parsed_url).await?;
 
         // 构建HTTP请求
         let request_str = self.build_request_string(&request, &parsed_url)?;
 
         // 发送请求并获取响应
-        let raw_response = connection.send_request(&request_str, &parsed_url)?;
+        let raw_response = connection.send_request(&request_str, &parsed_url).await?;
 
         // 将原始响应字符串解析为 Response 结构
         Response::from_raw_response(raw_response)
     }
 
     /// 创建连接
-    fn create_connection(&self, parsed_url: &ParsedUrl) -> Result<Box<dyn Connection>> {
+    async fn create_connection(&self, parsed_url: &ParsedUrl) -> Result<Box<dyn AsyncConnection>> {
         match &self.proxy_config {
-            Some(config) => Ok(Box::new(HttpConnection::via_proxy(config.clone(), parsed_url)?)),
-            None => Ok(Box::new(HttpConnection::direct(parsed_url)?)),
+            Some(config) => Ok(Box::new(AsyncHttpConnection::via_proxy(config.clone(), parsed_url).await?)),
+            None => Ok(Box::new(AsyncHttpConnection::direct(parsed_url).await?)),
         }
     }
 

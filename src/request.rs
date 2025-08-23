@@ -169,7 +169,7 @@ impl Request {
     }
 
     /// 设置JSON请求体
-    pub fn json<T: serde::Serialize>(self, data: &T) -> Result<Self> {
+    pub fn json<T: serde::Serialize>(self, _data: &T) -> Result<Self> {
         // TODO: 添加serde_json依赖后实现
         Err(Error::other(
             "JSON serialization not implemented yet. Add serde_json dependency.",
@@ -177,7 +177,7 @@ impl Request {
     }
 
     /// 设置表单数据请求体
-    pub fn form<T: serde::Serialize>(self, data: &T) -> Result<Self> {
+    pub fn form<T: serde::Serialize>(self, _data: &T) -> Result<Self> {
         // TODO: 添加serde_urlencoded依赖后实现
         Err(Error::other(
             "Form serialization not implemented yet. Add serde_urlencoded dependency.",
@@ -235,14 +235,14 @@ impl Default for Request {
     }
 }
 
-/// 请求构建器模式
-pub struct RequestBuilder<'a> {
+/// 异步请求构建器模式
+pub struct AsyncRequestBuilder<'a> {
     request: Request,
     client: &'a HttpClient,
 }
 
-impl<'a> RequestBuilder<'a> {
-    /// 创建新的请求构建器
+impl<'a> AsyncRequestBuilder<'a> {
+    /// 创建新的异步请求构建器
     pub fn new(method: Method, url: &str, client: &'a HttpClient) -> Self {
         Self {
             request: Request::new(method, url),
@@ -271,8 +271,9 @@ impl<'a> RequestBuilder<'a> {
         self.request
     }
 
-    pub fn send(self) -> Result<Response> {
-        self.client.execute(self.request)
+    /// 异步发送请求
+    pub async fn send(self) -> Result<Response> {
+        self.client.execute(self.request).await
     }
 }
 

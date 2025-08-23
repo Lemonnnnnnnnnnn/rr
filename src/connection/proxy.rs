@@ -1,10 +1,10 @@
 //! 代理连接管理
 //!
-//! 只负责代理服务器连接建立和隧道创建
+//! 只负责异步代理服务器连接建立和隧道创建
 
 use crate::error::{Error, Result};
-use std::io::{Read, Write};
-use std::net::TcpStream;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 use std::time::Duration;
 
 /// 代理类型枚举
@@ -45,37 +45,40 @@ impl ProxyConfig {
     }
 }
 
-/// 代理连接结构体
-/// 只负责连接到代理服务器并建立隧道
-pub struct ProxyConnection {
+/// 异步代理连接结构体
+/// 只负责异步连接到代理服务器并建立隧道
+pub struct AsyncProxyConnection {
     /// 底层TCP连接
     pub stream: TcpStream,
 }
 
-impl ProxyConnection {
+impl AsyncProxyConnection {
     /// 创建到代理服务器的连接
-    pub fn new(config: ProxyConfig) -> Result<Self> {
+    pub async fn new(config: ProxyConfig) -> Result<Self> {
         let addr = format!("{}:{}", config.host, config.port);
-        let stream = TcpStream::connect(&addr).map_err(|e| {
-            Error::connection(format!("Failed to connect to proxy {}: {}", addr, e))
-        })?;
+        let stream = tokio::net::TcpStream::connect(&addr)
+            .await
+            .map_err(|e| {
+                Error::connection(format!("Failed to connect to proxy {}: {}", addr, e))
+            })?;
 
-        stream.set_read_timeout(Some(config.timeout))?;
-        stream.set_write_timeout(Some(config.timeout))?;
-        stream.set_nodelay(true)?;
+        stream.set_nodelay(true)
+            .map_err(|e| Error::connection(format!("Failed to set TCP_NODELAY: {}", e)))?;
 
         Ok(Self { stream })
     }
 
     /// 建立到目标服务器的隧道
-    pub fn establish_tunnel(&mut self, target_host: &str, target_port: u16) -> Result<()> {
+    pub async fn establish_tunnel(&mut self, target_host: &str, target_port: u16) -> Result<()> {
         let request = format!(
             "CONNECT {}:{} HTTP/1.1\r\nHost: {}:{}\r\nConnection: keep-alive\r\n\r\n",
             target_host, target_port, target_host, target_port
         );
 
-        self.stream.write_all(request.as_bytes())?;
-        self.stream.flush()?;
+        self.stream.write_all(request.as_bytes()).await
+            .map_err(|e| Error::proxy(format!("Failed to write CONNECT request: {}", e)))?;
+        self.stream.flush().await
+            .map_err(|e| Error::proxy(format!("Failed to flush CONNECT request: {}", e)))?;
 
         // 读取并验证代理响应
         let mut response = String::new();
@@ -83,7 +86,8 @@ impl ProxyConnection {
         let mut total_read = 0;
 
         loop {
-            let n = self.stream.read(&mut buffer)?;
+            let n = self.stream.read(&mut buffer).await
+                .map_err(|e| Error::proxy(format!("Failed to read proxy response: {}", e)))?;
             if n == 0 {
                 break;
             }
