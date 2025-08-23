@@ -21,7 +21,7 @@ fn test_proxy() {
         .send()
         .expect("请求失败");
     assert!(response.is_success());
-    println!("{}", response);
+    println!("{}", response.body);
 }
 
 

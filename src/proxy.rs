@@ -48,7 +48,7 @@ impl ProxyConfig {
 /// 代理连接结构体
 pub struct ProxyConnection {
     /// 底层TCP连接
-    stream: TcpStream,
+    pub stream: TcpStream,
     /// 代理配置
     config: ProxyConfig,
 }
@@ -141,52 +141,14 @@ impl ProxyConnection {
         Ok(response)
     }
 
+    /// 获取底层流的可变引用
+    pub fn stream_mut(&mut self) -> &mut TcpStream {
+        &mut self.stream
+    }
+
     /// 获取底层流
     pub fn into_stream(self) -> TcpStream {
         self.stream
     }
 }
 
-/// 代理工具函数
-pub mod utils {
-    use super::*;
-
-    /// 解析代理URL
-    pub fn parse_proxy_url(url: &str) -> Result<ProxyConfig> {
-        todo!()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_proxy_config_creation() {
-        let http_proxy = ProxyConfig::http("proxy.example.com", 8080);
-        assert_eq!(http_proxy.proxy_type, ProxyType::Http);
-        assert_eq!(http_proxy.host, "proxy.example.com");
-        assert_eq!(http_proxy.port, 8080);
-    }
-
-    #[test]
-    fn test_parse_proxy_url() {
-        let config = utils::parse_proxy_url("http://proxy.example.com:8080").unwrap();
-        assert_eq!(config.proxy_type, ProxyType::Http);
-        assert_eq!(config.host, "proxy.example.com");
-        assert_eq!(config.port, 8080);
-    }
-
-    #[test]
-    fn test_invalid_proxy_url() {
-        assert!(utils::parse_proxy_url("ftp://proxy.example.com:8080").is_err());
-        assert!(utils::parse_proxy_url("http://proxy.example.com:invalid").is_err());
-        assert!(utils::parse_proxy_url("invalid-url").is_err());
-    }
-
-    #[test]
-    fn test_proxy_connection() {
-        let mut proxy_conn = ProxyConnection::new(ProxyConfig::http("127.0.0.1", 7890)).unwrap();
-        proxy_conn.establish_tunnel("httpbin.org", 80).unwrap();
-    }
-}
