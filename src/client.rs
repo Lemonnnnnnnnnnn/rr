@@ -1,4 +1,6 @@
 use crate::error::{Error, Result};
+use crate::request::{Method, Request, RequestBuilder};
+use crate::utils::{parse_host_port, ParsedUrl};
 use rustls::{ClientConfig, ClientConnection, RootCertStore, Stream};
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -44,8 +46,12 @@ impl HttpClient {
     }
 
     /// 发送 GET 请求
-    pub fn get(&self, url: &str) -> Result<Response> {
-        let parsed_url = self.parse_url(url)?;
+    pub fn get(&mut self, url: &str) -> RequestBuilder {
+        RequestBuilder::new(Method::GET, url, self)
+    }
+
+    pub fn execute(&self, request: Request) -> Result<Response> {
+        let parsed_url = parse_host_port(&request.url)?;
         let raw_response = if let Some(ref proxy) = self.proxy {
             let mut proxy_conn = ProxyConnection::new(proxy.clone())?;
             proxy_conn.establish_tunnel(&parsed_url.hostname, parsed_url.port)?
@@ -60,47 +66,6 @@ impl HttpClient {
 
         // 将原始响应字符串解析为 Response 结构
         Response::from_raw_response(raw_response)
-    }
-
-    /// 解析 URL
-    fn parse_url(&self, url: &str) -> Result<ParsedUrl> {
-        let (is_https, rest) = if url.starts_with("https://") {
-            (true, url.trim_start_matches("https://"))
-        } else if url.starts_with("http://") {
-            (false, url.trim_start_matches("http://"))
-        } else {
-            // 默认使用 HTTPS，但检查端口
-            if url.contains(":80") {
-                (false, url)
-            } else {
-                (true, url)
-            }
-        };
-
-        let (host, path) = if rest.contains('/') {
-            let parts: Vec<&str> = rest.splitn(2, '/').collect();
-            (parts[0], format!("/{}", parts[1]))
-        } else {
-            (rest, "/".to_string())
-        };
-
-        // 解析主机和端口
-        let (hostname, port) = if host.contains(':') {
-            let parts: Vec<&str> = host.split(':').collect();
-            (
-                parts[0].to_string(),
-                parts[1].parse().unwrap_or(if is_https { 443 } else { 80 }),
-            )
-        } else {
-            (host.to_string(), if is_https { 443 } else { 80 })
-        };
-
-        Ok(ParsedUrl {
-            hostname,
-            port,
-            path,
-            is_https,
-        })
     }
 
     /// 发送 HTTPS 请求
@@ -167,10 +132,3 @@ impl HttpClient {
     }
 }
 
-/// 解析后的 URL 结构体
-struct ParsedUrl {
-    hostname: String,
-    port: u16,
-    path: String,
-    is_https: bool,
-}

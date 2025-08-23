@@ -2,7 +2,6 @@
 //!
 //! 提供HTTP/HTTPS代理和SOCKS代理支持
 
-use crate::Response;
 use crate::error::{Error, Result};
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};

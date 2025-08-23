@@ -95,4 +95,9 @@ impl Error {
     pub fn other<S: Into<String>>(msg: S) -> Self {
         Error::Other(msg.into())
     }
+
+    /// 创建响应错误
+    pub fn response<S: Into<String>>(msg: S) -> Self {
+        Error::Response(msg.into())
+    }
 }
