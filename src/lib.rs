@@ -8,18 +8,24 @@
 //! - Support for custom headers at client level
 //! - Proxy support
 //! - Async/await support
+//! - Automatic TLS/crypto provider initialization
+//!
+//! ## HTTPS Support
+//!
+//! rr automatically initializes the crypto provider for HTTPS requests.
+//! No manual initialization is required.
 //!
 //! ## Example
 //!
 //! ```rust
-//! use rt_1::HttpClient;
+//! use rr::HttpClient;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // 创建带默认请求头的客户端
-//!     let mut client = HttpClient::new()
-//!         .default_header("User-Agent", "MyApp/1.0")
-//!         .default_header("Authorization", "Bearer token123");
+//!     let client = HttpClient::builder()
+//!         .default_headers(headers)
+//!         .build()?;
 //!
 //!     // 发送请求（会自动包含默认请求头）
 //!     let response = client.get("https://httpbin.org/get").send().await?;
@@ -36,9 +42,11 @@ pub mod request;
 pub mod utils;
 pub mod connection;
 pub mod headers;
+pub mod tls;
 
-pub use client::HttpClient;
-pub use response::Response;
+pub use client::{HttpClient, ClientBuilder};
+pub use response::{Response, StatusCode};
 pub use error::{Error, Result};
 pub use connection::{AsyncConnection, AsyncHttpConnection, ProxyConfig, ProxyType, AsyncTlsManager, AsyncProxyConnection};
 pub use request::AsyncRequestBuilder;
+pub use headers::HeaderMap;

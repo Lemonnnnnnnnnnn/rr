@@ -2,6 +2,45 @@ use std::collections::HashMap;
 use std::fmt;
 use crate::{error::Result, Error};
 
+/// HTTP 状态码结构体（兼容 reqwest::StatusCode）
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StatusCode {
+    pub code: u16,
+}
+
+impl StatusCode {
+    /// 检查是否为成功状态码 (200-299)
+    pub fn is_success(&self) -> bool {
+        self.code >= 200 && self.code < 300
+    }
+
+    /// 检查是否为重定向状态码 (300-399)
+    pub fn is_redirection(&self) -> bool {
+        self.code >= 300 && self.code < 400
+    }
+
+    /// 检查是否为客户端错误状态码 (400-499)
+    pub fn is_client_error(&self) -> bool {
+        self.code >= 400 && self.code < 500
+    }
+
+    /// 检查是否为服务器错误状态码 (500-599)
+    pub fn is_server_error(&self) -> bool {
+        self.code >= 500 && self.code < 600
+    }
+
+    /// 获取状态码数值
+    pub fn as_u16(&self) -> u16 {
+        self.code
+    }
+}
+
+impl fmt::Display for StatusCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.code)
+    }
+}
+
 /// HTTP 响应结构体
 #[derive(Debug, Clone)]
 pub struct Response {
@@ -13,14 +52,25 @@ pub struct Response {
     pub status_message: String,
     /// 响应头部
     pub headers: HashMap<String, String>,
-    /// 响应体
-    pub body: String,
+    /// 响应体 (原始字节数据)
+    pub body: Vec<u8>,
 }
 
 impl Response {
-    /// 从原始 HTTP 响应字符串创建 Response 实例
-    pub fn from_raw_response(raw_response: String) -> Result<Self> {
-        let mut lines = raw_response.lines();
+    /// 从原始 HTTP 响应字节流创建 Response 实例
+    pub fn from_raw_bytes(raw_response: Vec<u8>) -> Result<Self> {
+        // 首先找到头部结束的位置（\r\n\r\n）
+        let header_end = raw_response.windows(4).position(|w| w == b"\r\n\r\n")
+            .ok_or(Error::Response("Invalid HTTP response format".to_string()))?;
+
+        // 分离头部和响应体
+        let header_bytes = &raw_response[..header_end];
+        let body_bytes = &raw_response[header_end + 4..];
+
+        // 解析头部
+        let header_str = String::from_utf8_lossy(header_bytes);
+        let mut lines = header_str.lines();
+
         let status_line = lines.next().ok_or(Error::Response("Empty response".to_string()))?;
 
         // 解析状态行: "HTTP/1.1 200 OK"
@@ -35,37 +85,30 @@ impl Response {
 
         // 解析头部
         let mut headers = HashMap::new();
-        let mut body_start = false;
-        let mut body_lines = Vec::new();
-
         for line in lines {
             if line.is_empty() {
-                // 空行表示头部结束，接下来是响应体
-                body_start = true;
-                continue;
+                break;
             }
-
-            if body_start {
-                body_lines.push(line);
-            } else {
-                // 解析头部行: "Content-Type: text/html"
-                if let Some((key, value)) = line.split_once(':') {
-                    let key = key.trim().to_lowercase();
-                    let value = value.trim().to_string();
-                    headers.insert(key, value);
-                }
+            // 解析头部行: "Content-Type: text/html"
+            if let Some((key, value)) = line.split_once(':') {
+                let key = key.trim().to_lowercase();
+                let value = value.trim().to_string();
+                headers.insert(key, value);
             }
         }
-
-        let body = body_lines.join("\n");
 
         Ok(Response {
             version,
             status_code,
             status_message,
             headers,
-            body,
+            body: body_bytes.to_vec(),
         })
+    }
+
+    /// 从原始 HTTP 响应字符串创建 Response 实例（向后兼容）
+    pub fn from_raw_response(raw_response: String) -> Result<Self> {
+        Self::from_raw_bytes(raw_response.into_bytes())
     }
 
     /// 获取指定头部的值
@@ -98,6 +141,28 @@ impl Response {
         format!("{} {} {}", self.version, self.status_code, self.status_message)
     }
 
+    /// 获取状态信息（兼容 reqwest::Response::status()）
+    pub fn status(&self) -> StatusCode {
+        StatusCode {
+            code: self.status_code,
+        }
+    }
+
+    /// 获取响应体文本（兼容 reqwest::Response::text()）
+    pub async fn text(self) -> Result<String> {
+        String::from_utf8(self.body).map_err(|e| Error::other(format!("Invalid UTF-8: {}", e)))
+    }
+
+    /// 获取响应体的字节流（兼容 reqwest::Response::bytes_stream()）
+    pub fn bytes_stream(self) -> impl futures_util::Stream<Item = Result<Vec<u8>>> {
+        use futures_util::stream;
+
+        // 将已有的响应体数据转换为字节流
+        let chunks = self.body.chunks(8192).map(|chunk| Ok(chunk.to_vec())).collect::<Vec<_>>();
+
+        stream::iter(chunks)
+    }
+
     /// 获取内容长度
     pub fn content_length(&self) -> Option<usize> {
         self.get_header("content-length")
@@ -118,7 +183,7 @@ impl Response {
         }
 
         raw.push_str("\r\n");
-        raw.push_str(&self.body);
+        raw.push_str(&String::from_utf8_lossy(&self.body));
 
         raw
     }
@@ -128,7 +193,7 @@ impl fmt::Display for Response {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "HTTP响应: {} {} {}\n状态: {}\n内容长度: {} 字节\n内容类型: {}\n响应体长度: {} 字符",
+            "HTTP响应: {} {} {}\n状态: {}\n内容长度: {} 字节\n内容类型: {}\n响应体长度: {} 字节",
             self.version,
             self.status_code,
             self.status_message,
@@ -169,7 +234,7 @@ mod tests {
         assert_eq!(response.status_message, "OK");
         assert_eq!(response.get_header("content-type").unwrap(), "text/plain");
         assert_eq!(response.get_header("content-length").unwrap(), "12");
-        assert_eq!(response.body, "Hello World!");
+        assert_eq!(String::from_utf8(response.body.clone()).unwrap(), "Hello World!");
         assert!(response.is_success());
     }
 
@@ -182,5 +247,28 @@ mod tests {
         assert!(!response.is_success());
         assert!(response.is_client_error());
         assert_eq!(response.status_line(), "HTTP/1.1 404 Not Found");
+    }
+
+    #[test]
+    fn test_binary_response_body() {
+        // 模拟二进制数据（包含非UTF-8字节）
+        let binary_data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0xFF, 0xFE, 0x00, 0x01];
+        let raw = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\n\r\n",
+            binary_data.len()
+        );
+        let mut raw_bytes = raw.into_bytes();
+        raw_bytes.extend(binary_data.clone());
+
+        let response = Response::from_raw_bytes(raw_bytes).unwrap();
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.body, binary_data);
+        assert!(response.is_success());
+        assert_eq!(response.get_header("content-type").unwrap(), "image/png");
+
+        // 验证String::from_utf8会失败，因为这不是有效的UTF-8
+        let text_result = String::from_utf8(response.body.clone());
+        assert!(text_result.is_err());
     }
 }

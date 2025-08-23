@@ -13,7 +13,7 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait AsyncConnection: Send + Sync {
     /// 发送请求并获取响应
-    async fn send_request(&mut self, request: &str, parsed_url: &ParsedUrl) -> Result<String>;
+    async fn send_request(&mut self, request: &str, parsed_url: &ParsedUrl) -> Result<Vec<u8>>;
 }
 
 /// 异步 HTTP 连接结构体
@@ -58,7 +58,7 @@ impl AsyncHttpConnection {
 
 #[async_trait]
 impl AsyncConnection for AsyncHttpConnection {
-    async fn send_request(&mut self, request: &str, parsed_url: &ParsedUrl) -> Result<String> {
+    async fn send_request(&mut self, request: &str, parsed_url: &ParsedUrl) -> Result<Vec<u8>> {
         if parsed_url.is_https {
             self.send_https_request(request, parsed_url).await
         } else {
@@ -69,7 +69,7 @@ impl AsyncConnection for AsyncHttpConnection {
 
 impl AsyncHttpConnection {
     /// 通过HTTPS发送请求
-    async fn send_https_request(&mut self, request: &str, parsed_url: &ParsedUrl) -> Result<String> {
+    async fn send_https_request(&mut self, request: &str, parsed_url: &ParsedUrl) -> Result<Vec<u8>> {
         let mut tls_stream = self
             .tls_manager
             .create_tls_stream(&mut self.stream, &parsed_url.hostname).await?;
@@ -92,11 +92,11 @@ impl AsyncHttpConnection {
             }
         }
 
-        String::from_utf8(response).map_err(|e| Error::other(format!("Invalid UTF-8: {}", e)))
+        Ok(response)
     }
 
     /// 通过HTTP发送请求
-    async fn send_http_request(&mut self, request: &str) -> Result<String> {
+    async fn send_http_request(&mut self, request: &str) -> Result<Vec<u8>> {
         // 发送请求
         self.stream.write_all(request.as_bytes()).await
             .map_err(|e| Error::other(format!("Failed to write request: {}", e)))?;
@@ -115,6 +115,6 @@ impl AsyncHttpConnection {
             }
         }
 
-        String::from_utf8(response).map_err(|e| Error::other(format!("Invalid UTF-8: {}", e)))
+        Ok(response)
     }
 }

@@ -43,6 +43,32 @@ impl ProxyConfig {
         self.timeout = timeout;
         self
     }
+
+    /// 从 URL 字符串创建代理配置
+    /// 支持格式：http://proxy.example.com:8080
+    pub fn from_url(url: &str) -> Result<Self> {
+        if url.is_empty() {
+            return Err(crate::error::Error::connection("Proxy URL cannot be empty"));
+        }
+
+        // 解析 URL
+        let url = url::Url::parse(url)
+            .map_err(|e| crate::error::Error::connection(format!("Invalid proxy URL: {}", e)))?;
+
+        // 检查协议
+        let scheme = url.scheme();
+        if scheme != "http" {
+            return Err(crate::error::Error::connection(format!("Unsupported proxy protocol: {}", scheme)));
+        }
+
+        // 获取主机和端口
+        let host = url.host_str()
+            .ok_or_else(|| crate::error::Error::connection("Proxy URL missing host"))?;
+
+        let port = url.port().unwrap_or(80); // HTTP 默认端口
+
+        Ok(Self::http(host, port))
+    }
 }
 
 /// 异步代理连接结构体

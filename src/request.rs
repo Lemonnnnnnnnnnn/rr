@@ -236,14 +236,14 @@ impl Default for Request {
 }
 
 /// 异步请求构建器模式
-pub struct AsyncRequestBuilder<'a> {
+pub struct AsyncRequestBuilder {
     request: Request,
-    client: &'a HttpClient,
+    client: HttpClient,
 }
 
-impl<'a> AsyncRequestBuilder<'a> {
+impl AsyncRequestBuilder {
     /// 创建新的异步请求构建器
-    pub fn new(method: Method, url: &str, client: &'a HttpClient) -> Self {
+    pub fn new(method: Method, url: &str, client: HttpClient) -> Self {
         let request = Request::new(method, url);
 
         Self {
@@ -259,6 +259,25 @@ impl<'a> AsyncRequestBuilder<'a> {
         V: Into<String>,
     {
         self.request = self.request.header(key, value);
+        self
+    }
+
+    /// 设置多个请求头
+    pub fn headers<K, V, I>(mut self, headers: I) -> Self
+    where
+        K: Into<String>,
+        V: Into<String>,
+        I: IntoIterator<Item = (K, V)>,
+    {
+        self.request = self.request.headers(headers);
+        self
+    }
+
+    /// 设置 HeaderMap 的请求头（兼容方法）
+    pub fn headers_map(mut self, headers: &crate::HeaderMap) -> Self {
+        self.request = self.request.headers(
+            headers.inner().iter().map(|(k, v)| (k.clone(), v.clone()))
+        );
         self
     }
 

@@ -10,7 +10,7 @@ async fn test_get_httpbin() {
         .expect("请求失败");
 
     println!("状态码: {}", response.status_code);
-    println!("响应内容: {}", response.body);
+    println!("响应内容: {}", String::from_utf8_lossy(&response.body));
     assert!(response.is_success());
 }
 
@@ -24,7 +24,7 @@ async fn test_proxy() {
         .await
         .expect("请求失败");
     assert!(response.is_success());
-    println!("{}", response.body);
+    println!("{}", String::from_utf8_lossy(&response.body));
 }
 
 // #[test]
@@ -49,7 +49,7 @@ async fn test_concurrent_requests() {
                 .expect("请求失败");
             
             println!("状态码: {}", response.status_code);
-            println!("响应内容: {}", response.body);
+            println!("响应内容: {}", String::from_utf8_lossy(&response.body));
         });
         handles.push(handle);
     }
@@ -73,5 +73,5 @@ async fn test_custom_headers() {
         .expect("请求失败");
     
     assert!(response.is_success());
-    println!("{}", response.body);
+    println!("{}", String::from_utf8_lossy(&response.body));
 }
