@@ -1,4 +1,4 @@
-# RT-1 HTTP 客户端 - 异步版本
+# rr HTTP 客户端 - 异步版本
 
 一个轻量级的异步 HTTP 客户端，支持 HTTPS 和代理连接。
 
@@ -16,7 +16,7 @@
 
 ```toml
 [dependencies]
-rt-1 = "0.1.0"
+rr = "0.1.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
 

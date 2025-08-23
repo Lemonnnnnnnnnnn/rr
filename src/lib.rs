@@ -1,4 +1,4 @@
-//! # rt-1
+//! # rr
 //!
 //! A simple HTTP client library in Rust.
 //!

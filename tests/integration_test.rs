@@ -1,4 +1,4 @@
-use rt_1::{HttpClient, ProxyConfig};
+use rr::{HttpClient, ProxyConfig};
 
 #[tokio::test]
 async fn test_get_httpbin() {
