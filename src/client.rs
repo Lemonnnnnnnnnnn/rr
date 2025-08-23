@@ -12,17 +12,37 @@ pub struct HttpClient {
 impl HttpClient {
     /// 创建新的 HTTP 客户端（不使用代理）
     pub fn new() -> Self {
-        Self { proxy_config: None }
+        Self {
+            proxy_config: None,
+        }
     }
 
     /// 创建使用代理的HTTP客户端
     pub fn with_proxy(proxy_config: ProxyConfig) -> Self {
-        Self { proxy_config: Some(proxy_config) }
+        Self {
+            proxy_config: Some(proxy_config),
+        }
     }
+
 
     /// 发送 GET 请求
     pub fn get(&mut self, url: &str) -> AsyncRequestBuilder {
         AsyncRequestBuilder::new(Method::GET, url, self)
+    }
+
+    /// 发送 POST 请求
+    pub fn post(&mut self, url: &str) -> AsyncRequestBuilder {
+        AsyncRequestBuilder::new(Method::POST, url, self)
+    }
+
+    /// 发送 PUT 请求
+    pub fn put(&mut self, url: &str) -> AsyncRequestBuilder {
+        AsyncRequestBuilder::new(Method::PUT, url, self)
+    }
+
+    /// 发送 DELETE 请求
+    pub fn delete(&mut self, url: &str) -> AsyncRequestBuilder {
+        AsyncRequestBuilder::new(Method::DELETE, url, self)
     }
 
     /// 异步执行请求

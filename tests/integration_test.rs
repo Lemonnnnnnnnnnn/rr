@@ -60,3 +60,18 @@ async fn test_concurrent_requests() {
 
     println!("所有请求完成");
 }
+
+// 测试自定义请求头
+#[tokio::test]
+async fn test_custom_headers() {
+    let mut client = HttpClient::new();
+    let response = client
+        .get("https://httpbin.org/get")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .send()
+        .await
+        .expect("请求失败");
+    
+    assert!(response.is_success());
+    println!("{}", response.body);
+}

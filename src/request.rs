@@ -244,9 +244,11 @@ pub struct AsyncRequestBuilder<'a> {
 impl<'a> AsyncRequestBuilder<'a> {
     /// 创建新的异步请求构建器
     pub fn new(method: Method, url: &str, client: &'a HttpClient) -> Self {
+        let request = Request::new(method, url);
+
         Self {
-            request: Request::new(method, url),
-            client: client,
+            request,
+            client,
         }
     }
 
