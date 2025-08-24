@@ -36,7 +36,7 @@
 //! ```
 
 pub mod client;
-pub mod response;
+pub mod response; 
 pub mod error;
 pub mod request;
 pub mod utils;

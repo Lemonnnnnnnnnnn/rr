@@ -84,7 +84,7 @@ impl HttpClient {
         let mut connection = self.create_connection(&parsed_url).await?;
 
         // 构建HTTP请求
-        let request_str = crate::utils::serialize_request(&request, &parsed_url)?;
+        let request_str = request.serialize_to_string(&parsed_url)?;
 
         // 发送请求并获取响应
         let raw_response = connection.send_request(&request_str, &parsed_url).await?;

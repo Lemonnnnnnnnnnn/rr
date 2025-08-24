@@ -127,8 +127,40 @@ impl Request {
     /// 序列化请求为字节流
     pub fn serialize(&self) -> Result<Vec<u8>> {
         let parsed_url = parse_host_port(&self.url)?;
-        let request_str = crate::utils::serialize_request(self, &parsed_url)?;
+        let request_str = self.serialize_to_string(&parsed_url)?;
         Ok(request_str.into_bytes())
+    }
+
+    /// 序列化请求为字符串
+    pub fn serialize_to_string(&self, parsed_url: &crate::utils::ParsedUrl) -> Result<String> {
+        let mut request_str = format!(
+            "{} {} {}\r\n",
+            self.method.as_str(),
+            parsed_url.path,
+            self.version.as_str()
+        );
+
+        // 添加Host头
+        request_str.push_str(&format!("Host: {}\r\n", parsed_url.hostname));
+
+        // 添加其他请求头
+        for (key, value) in &self.headers {
+            request_str.push_str(&format!("{}: {}\r\n", key, value));
+        }
+
+        // 添加Connection头
+        request_str.push_str("Connection: close\r\n");
+
+        // 添加请求体（如果有）
+        if let Some(body) = &self.body {
+            request_str.push_str(&format!("Content-Length: {}\r\n", body.len()));
+            request_str.push_str("\r\n");
+            request_str.push_str(&String::from_utf8_lossy(body));
+        } else {
+            request_str.push_str("\r\n");
+        }
+
+        Ok(request_str)
     }
 
     /// 获取请求体的长度

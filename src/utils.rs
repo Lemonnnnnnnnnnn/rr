@@ -124,34 +124,3 @@ pub fn extract_domain(url: &str) -> Result<String> {
     Ok(parsed_url.hostname)
 }
 
-/// 序列化HTTP请求为字符串
-pub fn serialize_request(request: &crate::request::Request, parsed_url: &ParsedUrl) -> Result<String> {
-    let mut request_str = format!(
-        "{} {} {}\r\n",
-        request.method.as_str(),
-        parsed_url.path,
-        request.version.as_str()
-    );
-
-    // 添加Host头
-    request_str.push_str(&format!("Host: {}\r\n", parsed_url.hostname));
-
-    // 添加其他请求头
-    for (key, value) in &request.headers {
-        request_str.push_str(&format!("{}: {}\r\n", key, value));
-    }
-
-    // 添加Connection头
-    request_str.push_str("Connection: close\r\n");
-
-    // 添加请求体（如果有）
-    if let Some(body) = &request.body {
-        request_str.push_str(&format!("Content-Length: {}\r\n", body.len()));
-        request_str.push_str("\r\n");
-        request_str.push_str(&String::from_utf8_lossy(body));
-    } else {
-        request_str.push_str("\r\n");
-    }
-
-    Ok(request_str)
-}
