@@ -33,6 +33,17 @@ impl HttpClient {
         super::types::ClientBuilder::new()
     }
 
+    /// 创建一个禁用浏览器请求头的客户端
+    pub fn without_browser_headers() -> Self {
+        // 确保 crypto provider 已初始化
+        let _ = crate::tls::init_crypto_provider();
+
+        Self {
+            proxy_config: None,
+            default_headers: HeaderMap::new(),
+        }
+    }
+
     /// 创建使用代理的HTTP客户端
     pub fn with_proxy(proxy_config: ProxyConfig) -> Self {
         // 确保 crypto provider 已初始化

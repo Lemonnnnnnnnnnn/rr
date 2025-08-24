@@ -15,6 +15,7 @@ pub use constants::{
     validate_header_value,
     common_headers,
     content_types,
+    browser_headers,
 };
 
 pub use builder::HeadersBuilder;

@@ -27,10 +27,16 @@ async fn test_proxy() {
     println!("{}", String::from_utf8_lossy(&response.body));
 }
 
-// #[test]
-// fn test_get_18comic() {
-//     let client = HttpClient::with_proxy().expect("创建客户端失败");
-//     let response = client.get("https://18comic.ink/photo/292986").expect("请求失败");
+// #[tokio::test]
+// async fn test_get_18comic() {
+//     let client = HttpClient::with_proxy(ProxyConfig::http("127.0.0.1", 7890));
+//     // let client = HttpClient::new();
+//     let response = client
+//         .get("https://18comic.ink/photo/292986")
+//         .send()
+//         .await
+//         .expect("请求失败");
+//     println!("{}", response.clone().text().await.unwrap());
 //     assert!(response.is_success());
 // }
 
@@ -47,7 +53,7 @@ async fn test_concurrent_requests() {
                 .send()
                 .await
                 .expect("请求失败");
-            
+
             println!("状态码: {}", response.status_code);
             println!("响应内容: {}", String::from_utf8_lossy(&response.body));
         });
@@ -71,7 +77,7 @@ async fn test_custom_headers() {
         .send()
         .await
         .expect("请求失败");
-    
+
     assert!(response.is_success());
     println!("{}", String::from_utf8_lossy(&response.body));
 }
