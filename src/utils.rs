@@ -10,6 +10,7 @@ pub struct ParsedUrl {
     pub hostname: String,
     pub port: u16,
     pub path: String,
+    pub full_path: String,
     pub is_https: bool,
 }
 
@@ -25,10 +26,19 @@ pub fn parse_host_port(url: &str) -> Result<ParsedUrl> {
     // 为HTTPS使用默认端口443，为HTTP使用默认端口80
     let port = parsed_url.port().unwrap_or(if is_https { 443 } else { 80 });
 
+    // 构建完整的路径，包括查询参数
+    let path = parsed_url.path().to_string();
+    let mut full_path = path.clone();
+    if let Some(query) = parsed_url.query() {
+        full_path.push('?');
+        full_path.push_str(query);
+    }
+
     Ok(ParsedUrl {
         hostname,
         port,
-        path: parsed_url.path().to_string(),
+        path,
+        full_path,
         is_https,
     })
 }

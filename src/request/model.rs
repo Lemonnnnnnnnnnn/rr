@@ -131,7 +131,7 @@ impl Request {
         let mut request_str = format!(
             "{} {} {}\r\n",
             self.method.as_str(),
-            parsed_url.path,
+            parsed_url.full_path,
             self.version.as_str()
         );
 
