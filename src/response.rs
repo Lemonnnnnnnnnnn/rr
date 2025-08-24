@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use crate::{error::Result, Error};
+use crate::decompression::{Compression, decompress};
 
 /// HTTP 状态码结构体（兼容 reqwest::StatusCode）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -97,12 +98,26 @@ impl Response {
             }
         }
 
+        // 检查content-encoding头部并解压缩响应体
+        let content_encoding = headers.get("content-encoding")
+            .map(|v| v.as_str())
+            .unwrap_or("");
+
+        let compression = Compression::from_content_encoding(content_encoding);
+
+        // 处理响应体
+        let processed_body = if compression != Compression::None {
+            decompress(body_bytes, compression)?
+        } else {
+            body_bytes.to_vec()
+        };
+
         Ok(Response {
             version,
             status_code,
             status_message,
             headers,
-            body: body_bytes.to_vec(),
+            body: processed_body,
         })
     }
 

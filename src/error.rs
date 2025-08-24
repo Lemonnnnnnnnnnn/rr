@@ -53,6 +53,10 @@ pub enum Error {
     /// 响应错误
     #[error("Response error: {0}")]
     Response(String),
+
+    /// 解压缩错误
+    #[error("Decompression error: {0}")]
+    Decompression(String),
 }
 
 impl Error {
@@ -99,5 +103,10 @@ impl Error {
     /// 创建响应错误
     pub fn response<S: Into<String>>(msg: S) -> Self {
         Error::Response(msg.into())
+    }
+
+    /// 创建解压缩错误
+    pub fn decompression<S: Into<String>>(msg: S) -> Self {
+        Error::Decompression(msg.into())
     }
 }

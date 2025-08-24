@@ -36,13 +36,14 @@
 //! ```
 
 pub mod client;
-pub mod response; 
+pub mod response;
 pub mod error;
 pub mod request;
 pub mod utils;
 pub mod connection;
 pub mod headers;
 pub mod tls;
+pub mod decompression;
 
 pub use client::{HttpClient, ClientBuilder};
 pub use response::{Response, StatusCode};
@@ -50,3 +51,4 @@ pub use error::{Error, Result};
 pub use connection::{AsyncConnection, AsyncHttpConnection, ProxyConfig, ProxyType, AsyncTlsManager, AsyncProxyConnection};
 pub use request::AsyncRequestBuilder;
 pub use headers::HeaderMap;
+pub use decompression::{Compression, decompress};
