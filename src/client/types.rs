@@ -2,7 +2,6 @@
 //!
 //! 包含客户端构建器和相关类型
 
-use std::time::Duration;
 use crate::connection::ProxyConfig;
 use crate::headers::HeaderMap;
 
@@ -12,7 +11,6 @@ use crate::headers::HeaderMap;
 pub struct ClientBuilder {
     proxy_config: Option<ProxyConfig>,
     default_headers: HeaderMap,
-    timeout: Duration,
 }
 
 impl ClientBuilder {
@@ -21,7 +19,6 @@ impl ClientBuilder {
         Self {
             proxy_config: None,
             default_headers: HeaderMap::new(),
-            timeout: Duration::from_secs(30),
         }
     }
 
@@ -37,12 +34,6 @@ impl ClientBuilder {
         self
     }
 
-    /// 设置超时时间
-    pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
-        self
-    }
-
     /// 构建 HTTP 客户端
     pub fn build(self) -> crate::error::Result<super::model::HttpClient> {
         // 确保 crypto provider 已初始化
@@ -51,7 +42,6 @@ impl ClientBuilder {
         Ok(super::model::HttpClient {
             proxy_config: self.proxy_config,
             default_headers: self.default_headers,
-            timeout: self.timeout,
         })
     }
 }

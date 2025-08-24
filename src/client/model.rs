@@ -2,7 +2,6 @@
 //!
 //! 包含HttpClient结构体的定义和实现
 
-use std::time::Duration;
 use crate::error::Result;
 use crate::request::{Method, Request, AsyncRequestBuilder};
 use crate::utils::{parse_host_port, ParsedUrl};
@@ -15,7 +14,6 @@ use crate::headers::HeaderMap;
 pub struct HttpClient {
     pub(crate) proxy_config: Option<ProxyConfig>,
     pub(crate) default_headers: HeaderMap,
-    pub(crate) timeout: Duration,
 }
 
 impl HttpClient {
@@ -27,7 +25,6 @@ impl HttpClient {
         Self {
             proxy_config: None,
             default_headers: HeaderMap::new(),
-            timeout: Duration::from_secs(30),
         }
     }
 
@@ -44,7 +41,6 @@ impl HttpClient {
         Self {
             proxy_config: Some(proxy_config),
             default_headers: HeaderMap::new(),
-            timeout: Duration::from_secs(30),
         }
     }
 
