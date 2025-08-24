@@ -2,10 +2,10 @@
 //!
 //! 包含Request结构体的定义和实现
 
-use std::collections::HashMap;
-use bytes::Bytes;
 use crate::error::{Error, Result};
-use crate::utils::{extract_domain, parse_host_port};
+use crate::utils::parse_host_port;
+use bytes::Bytes;
+use std::collections::HashMap;
 
 use super::types::{Method, Version};
 
@@ -117,11 +117,6 @@ impl Request {
         Err(Error::other(
             "Form serialization not implemented yet. Add serde_urlencoded dependency.",
         ))
-    }
-
-    /// 获取域名
-    pub fn domain(&self) -> Result<String> {
-        extract_domain(&self.url)
     }
 
     /// 序列化请求为字节流
