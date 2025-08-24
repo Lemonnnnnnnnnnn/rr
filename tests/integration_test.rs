@@ -27,18 +27,18 @@ async fn test_proxy() {
     println!("{}", String::from_utf8_lossy(&response.body));
 }
 
-// #[tokio::test]
-// async fn test_get_18comic() {
-//     let client = HttpClient::with_proxy(ProxyConfig::http("127.0.0.1", 7890));
-//     // let client = HttpClient::new();
-//     let response = client
-//         .get("https://18comic.ink/photo/292986")
-//         .send()
-//         .await
-//         .expect("请求失败");
-//     println!("{}", response.clone().text().await.unwrap());
-//     assert!(response.is_success());
-// }
+#[tokio::test]
+async fn test_get_18comic() {
+    let client = HttpClient::with_proxy(ProxyConfig::http("127.0.0.1", 7890));
+    // let client = HttpClient::new();
+    let response = client
+        .get("https://18comic.ink/photo/292986")
+        .send()
+        .await
+        .expect("请求失败");
+    println!("{}", response.clone().text().await.unwrap());
+    assert!(response.is_success());
+}
 
 // 测试并行请求
 #[tokio::test]

@@ -29,8 +29,8 @@ impl HttpClient {
     }
 
     /// 获取客户端构建器
-    pub fn builder() -> super::types::ClientBuilder {
-        super::types::ClientBuilder::new()
+    pub fn builder() -> super::builder::ClientBuilder {
+        super::builder::ClientBuilder::new()
     }
 
     /// 创建一个禁用浏览器请求头的客户端

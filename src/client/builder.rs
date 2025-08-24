@@ -1,9 +1,10 @@
-//! HTTP客户端相关类型定义
+//! HTTP客户端构建器
 //!
-//! 包含客户端构建器和相关类型
+//! 提供 ClientBuilder 结构体用于构建 HTTP 客户端
 
 use crate::connection::ProxyConfig;
 use crate::headers::HeaderMap;
+use crate::error::Result;
 
 /// HTTP 客户端构建器
 /// 支持链式构建，类似 reqwest::Client::builder()
@@ -49,7 +50,7 @@ impl ClientBuilder {
     }
 
     /// 构建 HTTP 客户端
-    pub fn build(self) -> crate::error::Result<super::model::HttpClient> {
+    pub fn build(self) -> Result<super::model::HttpClient> {
         // 确保 crypto provider 已初始化
         crate::tls::init_crypto_provider()?;
 
