@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use crate::{error::Result, Error};
 use crate::decompression::{Compression, decompress};
+use crate::chunked::ChunkedParser;
 
 /// HTTP 状态码结构体（兼容 reqwest::StatusCode）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,19 +99,8 @@ impl Response {
             }
         }
 
-        // 检查content-encoding头部并解压缩响应体
-        let content_encoding = headers.get("content-encoding")
-            .map(|v| v.as_str())
-            .unwrap_or("");
-
-        let compression = Compression::from_content_encoding(content_encoding);
-
-        // 处理响应体
-        let processed_body = if compression != Compression::None {
-            decompress(body_bytes, compression)?
-        } else {
-            body_bytes.to_vec()
-        };
+        // 处理响应体：先处理 chunked，然后处理压缩
+        let processed_body = Self::process_response_body(&headers, body_bytes)?;
 
         Ok(Response {
             version,
@@ -119,6 +109,28 @@ impl Response {
             headers,
             body: processed_body,
         })
+    }
+
+    /// 处理响应体：支持 chunked 传输和压缩
+    fn process_response_body(headers: &HashMap<String, String>, body_bytes: &[u8]) -> Result<Vec<u8>> {
+        let mut processed_data = body_bytes.to_vec();
+
+        // 第一步：处理 chunked 传输编码
+        if ChunkedParser::is_chunked(headers) {
+            processed_data = ChunkedParser::parse(&processed_data)?;
+        }
+
+        // 第二步：处理内容压缩
+        let content_encoding = headers.get("content-encoding")
+            .map(|v| v.as_str())
+            .unwrap_or("");
+
+        let compression = Compression::from_content_encoding(content_encoding);
+        if compression != Compression::None {
+            processed_data = decompress(&processed_data, compression)?;
+        }
+
+        Ok(processed_data)
     }
 
     /// 从原始 HTTP 响应字符串创建 Response 实例（向后兼容）
@@ -285,5 +297,129 @@ mod tests {
         // 验证String::from_utf8会失败，因为这不是有效的UTF-8
         let text_result = String::from_utf8(response.body.clone());
         assert!(text_result.is_err());
+    }
+
+    #[test]
+    fn test_chunked_response() {
+        // 模拟 chunked 响应: "Hello World!" 分成两个 chunk
+        let chunked_data = b"6\r\nHello \r\n6\r\nWorld!\r\n0\r\n\r\n";
+        let raw = format!(
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: text/plain\r\n\r\n"
+        );
+        let mut raw_bytes = raw.into_bytes();
+        raw_bytes.extend(chunked_data);
+
+        let response = Response::from_raw_bytes(raw_bytes).unwrap();
+
+        assert_eq!(response.version, "HTTP/1.1");
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.get_header("transfer-encoding").unwrap(), "chunked");
+        assert_eq!(String::from_utf8(response.body.clone()).unwrap(), "Hello World!");
+        assert!(response.is_success());
+    }
+
+    #[test]
+    fn test_chunked_gzip_response() {
+        use flate2::write::GzEncoder;
+        use flate2::Compression;
+        use std::io::Write;
+
+        // 创建要压缩的数据
+        let original_data = b"Hello World! This is a test message for gzip compression.";
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(original_data).unwrap();
+        let compressed_data = encoder.finish().unwrap();
+
+        // 创建 chunked + gzip 响应
+        let mut chunked_data = Vec::new();
+        let chunk_size = compressed_data.len();
+        chunked_data.extend(format!("{:x}\r\n", chunk_size).as_bytes());
+        chunked_data.extend(&compressed_data);
+        chunked_data.extend(b"\r\n0\r\n\r\n");
+
+        let raw = format!(
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\n\r\n"
+        );
+        let mut raw_bytes = raw.into_bytes();
+        raw_bytes.extend(&chunked_data);
+
+        let response = Response::from_raw_bytes(raw_bytes).unwrap();
+
+        assert_eq!(response.version, "HTTP/1.1");
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.get_header("transfer-encoding").unwrap(), "chunked");
+        assert_eq!(response.get_header("content-encoding").unwrap(), "gzip");
+        assert_eq!(response.body, original_data);
+        assert!(response.is_success());
+    }
+
+    #[test]
+    fn test_chunked_deflate_response() {
+        use flate2::write::DeflateEncoder;
+        use flate2::Compression;
+        use std::io::Write;
+
+        // 创建要压缩的数据
+        let original_data = b"Hello World! This is a test message for deflate compression.";
+        let mut encoder = DeflateEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(original_data).unwrap();
+        let compressed_data = encoder.finish().unwrap();
+
+        // 创建 chunked + deflate 响应
+        let mut chunked_data = Vec::new();
+        let chunk_size = compressed_data.len();
+        chunked_data.extend(format!("{:x}\r\n", chunk_size).as_bytes());
+        chunked_data.extend(&compressed_data);
+        chunked_data.extend(b"\r\n0\r\n\r\n");
+
+        let raw = format!(
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Encoding: deflate\r\nContent-Type: text/plain\r\n\r\n"
+        );
+        let mut raw_bytes = raw.into_bytes();
+        raw_bytes.extend(&chunked_data);
+
+        let response = Response::from_raw_bytes(raw_bytes).unwrap();
+
+        assert_eq!(response.version, "HTTP/1.1");
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.get_header("transfer-encoding").unwrap(), "chunked");
+        assert_eq!(response.get_header("content-encoding").unwrap(), "deflate");
+        assert_eq!(response.body, original_data);
+        assert!(response.is_success());
+    }
+
+    #[test]
+    fn test_empty_chunked_response() {
+        let chunked_data = b"0\r\n\r\n";
+        let raw = format!(
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: text/plain\r\n\r\n"
+        );
+        let mut raw_bytes = raw.into_bytes();
+        raw_bytes.extend(chunked_data);
+
+        let response = Response::from_raw_bytes(raw_bytes).unwrap();
+
+        assert_eq!(response.version, "HTTP/1.1");
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.body.len(), 0);
+        assert!(response.is_success());
+    }
+
+    #[test]
+    fn test_chunked_with_trailer_headers() {
+        // 测试带有 trailer headers 的 chunked 响应
+        let chunked_data = b"6\r\nHello \r\n6\r\nWorld!\r\n0\r\nX-Trailer: test\r\n\r\n";
+        let raw = format!(
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: text/plain\r\n\r\n"
+        );
+        let mut raw_bytes = raw.into_bytes();
+        raw_bytes.extend(chunked_data);
+
+        let response = Response::from_raw_bytes(raw_bytes).unwrap();
+
+        assert_eq!(response.version, "HTTP/1.1");
+        assert_eq!(response.status_code, 200);
+        assert_eq!(String::from_utf8(response.body.clone()).unwrap(), "Hello World!");
+        assert!(response.is_success());
     }
 }

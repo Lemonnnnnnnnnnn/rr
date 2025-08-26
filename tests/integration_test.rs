@@ -67,6 +67,25 @@ async fn test_concurrent_requests() {
     println!("所有请求完成");
 }
 
+// 测试 chunked 响应处理
+#[tokio::test]
+async fn test_chunked_response_handling() {
+    let client = HttpClient::new();
+    let response = client
+        .get("https://httpbin.org/stream/5")
+        .send()
+        .await
+        .expect("请求失败");
+
+    assert!(response.is_success());
+    println!("Status: {}", response.status_code);
+    println!("Content-Length: {:?}", response.get_header("content-length"));
+    println!("Transfer-Encoding: {:?}", response.get_header("transfer-encoding"));
+    println!("Content-Encoding: {:?}", response.get_header("content-encoding"));
+    println!("Body length: {}", response.body.len());
+    println!("Body preview: {}", String::from_utf8_lossy(&response.body[..std::cmp::min(200, response.body.len())]));
+}
+
 // 测试自定义请求头
 #[tokio::test]
 async fn test_custom_headers() {

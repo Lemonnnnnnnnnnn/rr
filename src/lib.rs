@@ -44,6 +44,7 @@ pub mod connection;
 pub mod headers;
 pub mod tls;
 pub mod decompression;
+pub mod chunked;
 
 pub use client::{HttpClient, ClientBuilder};
 pub use response::{Response, StatusCode};
